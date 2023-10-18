@@ -8,7 +8,6 @@ from sklearn.svm import SVC
 from sklearn.model_selection import cross_validate, cross_val_score, learning_curve, StratifiedKFold, GridSearchCV
 from sklearn.metrics import f1_score
 import matplotlib.pyplot as plt
-
 import pandas as pd
 import numpy as np
 

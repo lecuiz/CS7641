@@ -63,27 +63,32 @@ def plot_from_df(train, test, train_size, ylabel, save_name):
     return None
 
 def plot_loss_curve(results):
-    short_name = {'random_hill_climb': 'RHC', 'genetic_alg': 'GA', 'simulated_annealing': 'SA'}
-    fig, ax = plt.subplots()
-    fig.set_figheight(3.5)
+    short_name = {'random_hill_climb': 'RHC', 'genetic_alg': 'GA', 'simulated_annealing': 'SA', 'backprop':'backprop'}
     for alg, val in results.items():
+        fig, ax = plt.subplots()
+        fig.set_figheight(3.5)
         algo = short_name[alg]
         # print(algo)
-        min_len = min([len(x) for x in val['fitness_curve']])
-        loss_curve = np.stack([c[:min_len] for c in val['fitness_curve']], axis=-1)[:,0]
+        # min_len = min([len(x) for x in val['fitness_curve']])
+        min_len = min([len(x) for x in val])
+        if alg == 'backprop':
+            loss_curve = np.stack([c[:min_len] for c in val], axis=-1)
+        else:
+            loss_curve = np.stack([c[:min_len] for c in val], axis=-1)[:, 0]
         df_plot = pd.DataFrame([loss_curve.mean(axis=-1), loss_curve.std(axis=-1)], index=[algo, 'StdDev']).T
         df_plot[algo].plot(ax=ax, label=algo)
         ax.fill_between(df_plot.index, df_plot[algo]-df_plot['StdDev'], df_plot[algo]+df_plot['StdDev'], alpha=0.2)
         ratio, xlim, ylim = 0.5, ax.get_xlim(), ax.get_ylim()
         ax.set_aspect(abs((xlim[1] - xlim[0]) / (ylim[0] - ylim[1])) * ratio)
         # ax.set(xlabel='Problem Size', ylabel='Wall Clock Time (s)', title=problem_name)
-        title = '_'.join(['NN', 'fitting'])
-        ax.set(xlabel='Iteration', ylabel='Fitness', title=title)
+        title = '_'.join([alg, 'convergence'])
+        ax.set(xlabel='Iteration', ylabel='Loss', title=title)
         ax.legend()
         ax.grid()
         fig.show()
-
         fig.savefig(title + '.png')
+
+    return None
 
 
 if __name__ == '__main__':
@@ -95,95 +100,94 @@ if __name__ == '__main__':
     df = pd.read_csv(os.path.join(data_dir, 'tic-tac-toe.data'), header=None).sample(frac=1)
     X, y = df.iloc[:, :-1].replace(['x', 'o', 'b'], [2, 1, 0]), df.iloc[:, -1].replace(['negative', 'positive'],
                                                                                        [0, 1])
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
     os.chdir(data_dir)
 
-    # data_dir = './breast+cancer+wisconsin+diagnostic/'
-    # df = pd.read_csv(os.path.join(data_dir, 'wdbc.data'), header=None).sample(frac=1)
-    # X, y = df.iloc[:, 2:], df.iloc[:, 1].replace(['M', 'B'], [1, 0])
-    # X_train, X_test, y_train, y_test = train_test_split(X, y)
-    # os.chdir(data_dir)
-
-
     results = {}
-    nn_algorithms = dict(random_hill_climb=
-                         dict(short_name='RHC',
-                              grid_params=dict(),
-                              ),
-                         genetic_alg='GA',
-                         simulated_annealing='SA')
-
     grid_params = dict(random_hill_climb=dict(restarts=[10],
-                                              max_iters=[1000],
+                                              max_iters=[10000],
                                               ),
                        genetic_alg=dict(mutation_prob=[0.2, 0.5, 0.7],
                                         pop_size=[20, 50, 100, 200],
-                                        max_iters=[100]
+                                        max_iters=[1000]
                                         ),
-                       simulated_annealing=dict(schedule=[mlrose.GeomDecay()],
+                       simulated_annealing=dict(schedule=[mlrose.GeomDecay(1), mlrose.GeomDecay(50), mlrose.GeomDecay(500), mlrose.GeomDecay(5000), mlrose.GeomDecay(10000)],
                                                 max_iters=[1000])
                        )
 
     # mutation_prob=0.5, pop_size=100
     results, do_grid_search = {}, False
+    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.1)
+
     # for nn_algo, nn_algo_short in nn_algorithms.items():
     if do_grid_search:
         for nn_algo, param_grid in grid_params.items():
 
             print(nn_algo)
-            nn_model = mlrose.NeuralNetwork(hidden_nodes=[25], activation='relu',
-                                            algorithm=nn_algo, max_iters=10000,
-                                            bias=True, is_classifier=True, learning_rate=0.00001,
+            nn_model = mlrose.NeuralNetwork(hidden_nodes=[10], activation='relu',
+                                            algorithm=nn_algo, max_iters=1000,
+                                            bias=True, is_classifier=True, learning_rate=0.001,
                                             early_stopping=True, clip_max=500, max_attempts=100,
                                             random_state=9, curve=True)
 
             grid_search = GridSearchCV(estimator=nn_model,
                                        param_grid=param_grid,
                                        scoring='f1',
-                                       cv=StratifiedKFold(n_splits=3, shuffle=True),
+                                       cv=StratifiedKFold(n_splits=2, shuffle=True),
                                        return_train_score=True,
                                        verbose=1)
-            grid_search.fit(X, y)
+
+            grid_search.fit(X_train, y_train)
             print(grid_search.best_score_)
-            results[nn_algo] = grid_search.best_estimator_
-
-
-
+            print(grid_search.best_params_)
+            # results[nn_algo] = grid_search.best_estimator_
 
     optim_params = dict(random_hill_climb=dict(restarts=10,
                                                max_iters=1000,
                                                ),
-                        genetic_alg=dict(mutation_prob=0.5,
-                                         pop_size=100,
+                        genetic_alg=dict(mutation_prob=0.7,
+                                         pop_size=20,
                                          max_iters=1000
                                          ),
-                        simulated_annealing=dict(schedule=mlrose.GeomDecay(500),
+                        simulated_annealing=dict(schedule=mlrose.GeomDecay(),
                                                  max_iters=1000),
                         backprop=dict()
                         )
 
+    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75)
     results, short_name = {}, {'random_hill_climb':'RHC', 'genetic_alg':'GA', 'simulated_annealing':'SA'}
     for nn_algo, algo_params in optim_params.items():
         print(nn_algo)
-        fitness_curves, f1_scores = [], []
         for seed in [9]:
             if nn_algo != 'backprop':
-                nn_model = mlrose.NeuralNetwork(hidden_nodes=[25], activation='relu', algorithm=nn_algo,
+                nn_model = mlrose.NeuralNetwork(hidden_nodes=[10], activation='relu', algorithm=nn_algo,
                                                 bias=True, is_classifier=True, learning_rate=0.001,
                                                 early_stopping=True, clip_max=500, max_attempts=100,
                                                 random_state=seed, curve=True)
                 nn_model.set_params(**algo_params)
-                # nn_model.fit(X_train, y_train)
-                # fitness_curves.append(nn_model.fitness_curve)
             else:
-                nn_model = MLPClassifier(hidden_layer_sizes=(25,), activation='relu',
+                nn_model = MLPClassifier(hidden_layer_sizes=(10,), activation='relu',
                                          early_stopping=True, random_state=seed,
                                          learning_rate_init=0.001)
-                # nn_model.fit(X_train, y_train)
-                # fitness_curves.append(nn_model.loss_curve_)
-
-            # f1_score(y_test, nn_model.predict(X_test))
-            # f1_scores.append(f1_score(y_test, nn_model.predict(X_test)))
 
             train_scores, test_scores, fit_times, score_times = plot_learning_curve(nn_model, X, y, nn_algo)
-        # results[nn_algo] = dict(fitness_curve=fitness_curves, f1_score=f1_scores)
+
+        fitness_curves = []
+        for seed in [9, 10, 15]:
+            if nn_algo != 'backprop':
+                nn_model = mlrose.NeuralNetwork(hidden_nodes=[10], activation='relu', algorithm=nn_algo,
+                                                bias=True, is_classifier=True, learning_rate=0.001,
+                                                early_stopping=True, clip_max=500, max_attempts=100,
+                                                random_state=seed, curve=True)
+                nn_model.set_params(**algo_params)
+                nn_model.fit(X_train, y_train)
+                fitness_curves.append(nn_model.fitness_curve)
+            else:
+                nn_model = MLPClassifier(hidden_layer_sizes=(10,), activation='relu',
+                                         early_stopping=True, random_state=seed,
+                                         learning_rate_init=0.001)
+                nn_model.fit(X_train, y_train)
+                fitness_curves.append(nn_model.loss_curve_)
+
+        results[nn_algo] = fitness_curves
+
+    plot_loss_curve(results)

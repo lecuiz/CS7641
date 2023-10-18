@@ -106,59 +106,68 @@ if 'Assignment' not in os.getcwd():
 for key, val in run_dict.items():
     # fitness_fn, params = val['fitness_fn'], val['params']
     fitness_fn = val['fitness_fn']
-    problem = mlrose.DiscreteOpt(length=100, fitness_fn=fitness_fn, maximize=True)
+    if key == 'FourPeaks':
+        problem = mlrose.DiscreteOpt(length=50, fitness_fn=fitness_fn, maximize=True)
+    else:
+        problem = mlrose.DiscreteOpt(length=100, fitness_fn=fitness_fn, maximize=True)
     problem.set_mimic_fast_mode(True)
 
-    experiment_name, output_directory = '_'.join([key + 'RHC']), key
-    print('Optimising ', experiment_name)
-    rhc = RHCRunner(problem=problem,
-                    experiment_name=experiment_name,
-                    output_directory=output_directory,
-                    seed=13,
-                    iteration_list=[1000],
-                    max_attempts=100,
-                    restart_list=[10, 25, 50])
-    df_run_stats, df_run_curves = rhc.run()
-    print(df_run_stats.sort_values(by='Fitness').tail(5))
+    # experiment_name, output_directory = '_'.join([key + 'RHC']), key
+    # print('Optimising ', experiment_name)
+    # rhc = RHCRunner(problem=problem,
+    #                 experiment_name=experiment_name,
+    #                 output_directory=output_directory,
+    #                 seed=13,
+    #                 iteration_list=[1000],
+    #                 max_attempts=100,
+    #                 restart_list=[10, 25, 50])
+    # df_run_stats, df_run_curves = rhc.run()
+    # print(df_run_stats.sort_values(by='Fitness').tail(5))
 
-    experiment_name, output_directory = '_'.join([key + 'SA']), key
-    print('Optimising ', experiment_name)
-    sa = SARunner(problem=problem,
-                   experiment_name=experiment_name,
-                   output_directory=output_directory,
-                   seed=13,
-                   # iteration_list=[100],
-                   iteration_list=[1000],
-                   max_attempts=100,
-                   temperature_list=[1, 10, 25, 50, 100, 250, 500, 1000, 2500],
-                   decay_list=[mlrose.GeomDecay])
-    df_run_stats, df_run_curves = sa.run()
-    print(df_run_stats.sort_values(by='Fitness').tail(5))
+    if key == 'FlipFlop':
+        experiment_name, output_directory = '_'.join([key + 'SA']), key
+        print('Optimising ', experiment_name)
+        sa = SARunner(problem=problem,
+                       experiment_name=experiment_name,
+                       output_directory=output_directory,
+                       seed=13,
+                       # iteration_list=[100],
+                       iteration_list=[1000],
+                       max_attempts=100,
+                       temperature_list=[1, 10, 25, 50, 100, 250, 500, 1000, 2500],
+                       decay_list=[mlrose.GeomDecay])
+        df_run_stats, df_run_curves = sa.run()
+        print(df_run_stats.sort_values(by='Fitness').tail(5))
+        plot_SA_details(experiment_name, output_directory)
 
-    experiment_name, output_directory = '_'.join([key + 'GA']), key
-    print('Optimising ', experiment_name)
-    ga = GARunner(problem=problem,
-                  experiment_name=experiment_name,
-                  output_directory=output_directory,
-                  seed=13,
-                  iteration_list=[100],
-                  max_attempts=100,
-                  population_sizes=[20, 50, 100, 200],
-                  mutation_rates=[0.2, 0.5, 0.7])
-    df_run_stats, df_run_curves = ga.run()
-    print(experiment_name, df_run_stats.sort_values(by='Fitness').tail(5))
-
-    experiment_name, output_directory = '_'.join([key + 'MIMIC']), key
-    print('Optimising ', experiment_name)
-    mmc = MIMICRunner(problem=problem,
+    if key == 'FourPeaks':
+        experiment_name, output_directory = '_'.join([key + 'GA']), key
+        print('Optimising ', experiment_name)
+        ga = GARunner(problem=problem,
                       experiment_name=experiment_name,
                       output_directory=output_directory,
-                      use_fast_mimic=True,
                       seed=13,
-                      iteration_list=[40],
+                      iteration_list=[100],
                       max_attempts=100,
                       population_sizes=[20, 50, 100, 200],
-                      keep_percent_list=[0.25, 0.5, 0.75])
-    df_run_stats, df_run_curves = mmc.run()
-    print(experiment_name, df_run_stats.sort_values(by='Fitness').tail(5))
+                      mutation_rates=[0.2, 0.5, 0.7])
+        df_run_stats, df_run_curves = ga.run()
+        print(experiment_name, df_run_stats.sort_values(by='Fitness').tail(5))
+        plot_GA_details(experiment_name, output_directory)
+
+    if key == 'OneMax':
+        experiment_name, output_directory = '_'.join([key + 'MIMIC']), key
+        print('Optimising ', experiment_name)
+        mmc = MIMICRunner(problem=problem,
+                          experiment_name=experiment_name,
+                          output_directory=output_directory,
+                          use_fast_mimic=True,
+                          seed=13,
+                          iteration_list=[40],
+                          max_attempts=100,
+                          population_sizes=[20, 50, 100, 200],
+                          keep_percent_list=[0.25, 0.5, 0.75])
+        df_run_stats, df_run_curves = mmc.run()
+        print(experiment_name, df_run_stats.sort_values(by='Fitness').tail(5))
+        plot_MIMIC_details(experiment_name, output_directory)
 

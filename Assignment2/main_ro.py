@@ -150,21 +150,11 @@ if __name__ == '__main__':
                                )),
         FourPeaks=dict(fitness_fn=mlrose.FourPeaks(),
                        algos=dict(RHC=dict(fn=mlrose.random_hill_climb, params=dict(restarts=25, max_iters=1000)),
-                                  SA=dict(fn=mlrose.simulated_annealing, params=dict(max_iters=1000)),
+                                  SA=dict(fn=mlrose.simulated_annealing, params=dict(max_iters=1000)),#,€ schedule=mlrose.GeomDecay(init_temp=1000))),
                                   GA=dict(fn=mlrose.genetic_alg, params=dict(pop_size=200, mutation_prob=0.7, max_iters=100)),
-                                  MIMIC=dict(fn=mlrose.mimic, params=dict(pop_size=100, keep_pct=0.25, max_iters=40))
+                                  MIMIC=dict(fn=mlrose.mimic, params=dict(pop_size=200, keep_pct=0.75, max_iters=80))
                                   ))
     )
-
-                    # # problem=mlrose.DiscreteOpt(length=100, fitness_fn=mlrose.FourPeaks(), maximize=True),
-                    #      # algos=dict(RHC=mlrose.random_hill_climb)
-                    # KnapSack=dict(fitness_fn=mlrose.Knapsack(),
-                    #               #params=dict(max_attempts=100, max_iters=100, random_state=13, curve=True)
-                    #               ),
-                    # TravellingSales=dict(fitness_fn=mlrose.TravellingSales(),
-                    #                      # params=dict(max_attempts=100, max_iters=100, random_state=13, curve=True)
-                    #               )
-                    # )
 
     if 'Assignment' not in os.getcwd():
         os.chdir('Assignment2')
@@ -173,17 +163,12 @@ if __name__ == '__main__':
     for key, val in run_dict.items():
         # fitness_fn, params = val['fitness_fn'], val['params']
         fitness_fn, algo_dict = val['fitness_fn'], val['algos']
-        problem = mlrose.DiscreteOpt(length=100, fitness_fn=fitness_fn, maximize=True)
+        if key == 'FourPeaks':
+            problem = mlrose.DiscreteOpt(length=50, fitness_fn=fitness_fn, maximize=True)
+        else:
+            problem = mlrose.DiscreteOpt(length=100, fitness_fn=fitness_fn, maximize=True)
         problem.set_mimic_fast_mode(True)
-        # problem_results = {}
-        # for algo_name, algo in algo_dict.items():
-        #     print(key, algo_name)
-        #     algo_function, algo_params = algo['fn'], algo['params']
-        #     start = datetime.now()
-        #     best_state, best_fitness, fitness_curve = algo_function(problem=problem, **general_params, **algo_params)
-        #     run_time = datetime.now() - start
-        #     problem_results[algo_name] = dict(best_state=best_state, best_fitness=best_fitness, fit_curve=fitness_curve, run_time=run_time)
-        # results[key] = problem_results
+
         results[key] = run_all_algorithms(algo_dict, problem)
         plot_iterations(results[key], key)
 
